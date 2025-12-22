@@ -1050,7 +1050,9 @@ export class GranularAccess implements GranularAccessForBundle {
    * They may be allowed to download in any case, see canCopyEverything.
    */
   public async hasFullCopiesPermission(docSession: OptDocSession): Promise<boolean> {
-    const permInfo = await this._getAccess(docSession);
+    return this.hasFullCopiesPermissionSync(await this._getAccess(docSession));
+  }
+  public hasFullCopiesPermissionSync(permInfo: PermissionInfo): boolean {
     return permInfo.getColumnAccess(SPECIAL_RULES_TABLE_ID, 'FullCopies').perms.read === 'allow';
   }
 
@@ -1058,8 +1060,20 @@ export class GranularAccess implements GranularAccessForBundle {
    * Check if user may view Access Rules.
    */
   public async hasAccessRulesPermission(docSession: OptDocSession): Promise<boolean> {
-    const permInfo = await this._getAccess(docSession);
+    return this.hasAccessRulesPermissionSync(await this._getAccess(docSession));
+  }
+  public hasAccessRulesPermissionSync(permInfo: PermissionInfo): boolean {
     return permInfo.getColumnAccess(SPECIAL_RULES_TABLE_ID, 'AccessRules').perms.read === 'allow';
+  }
+
+  /**
+   * Check if user is restricted from copying or downloading a doc, even if they can see it in full.
+   */
+  public async isRestrictedFromCopying(docSession: OptDocSession): Promise<boolean> {
+    return this.isRestrictedFromCopyingSync(await this._getAccess(docSession));
+  }
+  public isRestrictedFromCopyingSync(permInfo: PermissionInfo): boolean {
+    return permInfo.getColumnAccess(SPECIAL_RULES_TABLE_ID, 'DocCopies').perms.read !== 'allow';
   }
 
   /**
@@ -1099,8 +1113,13 @@ export class GranularAccess implements GranularAccessForBundle {
    * just a bit inconsistent.
    */
   public async canCopyEverything(docSession: OptDocSession): Promise<boolean> {
-    return await this.hasFullCopiesPermission(docSession) ||
-      await this.canReadEverything(docSession);
+    if (!this._ruler.haveRules()) { return true; }
+    const permInfo = await this._getAccess(docSession);
+    return this.hasFullCopiesPermissionSync(permInfo) || (
+      await this.canReadEverything(docSession) &&
+      this.hasAccessRulesPermissionSync(permInfo) &&
+      !this.isRestrictedFromCopyingSync(permInfo)
+    );
   }
 
   /**
@@ -2765,16 +2784,13 @@ export class GranularAccess implements GranularAccessForBundle {
    * Tests if the user can modify cell's data.
    */
   private async _canApplyCellActions(currentUser: User, userIsOwner: boolean) {
-    // Owner can modify all comments, without exceptions.
-    if (userIsOwner) {
-      return;
-    }
     if (!this._activeBundle) { throw new Error('no active bundle'); }
     const {docActions, docSession} = this._activeBundle;
     const snapShot = await this.createSnapshotWithCells(docActions);
     await applyAndCheckActionsForCells(
       snapShot,
       docActions,
+      this._activeBundle.isDirect,
       userIsOwner,
       this._ruler.haveRules(),
       currentUser.UserRef || '',
