@@ -440,7 +440,7 @@ describe('Authorizer', function() {
     await activateServer(localServer, docTools.getDocManager());
 
     // await assert.isRejected(
-    await axios.get(localServer.getOwnUrl(), chimpy)
+    await axios.get(localServer.getOwnUrl(), chimpy);
     //   '403'
     // );
 
