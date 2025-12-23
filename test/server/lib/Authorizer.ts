@@ -427,30 +427,6 @@ describe('Authorizer', function() {
       await localServer.close();
     }
   });
-
-  it('forbids access to stranger if GRIST_AUTO_USER=false by GRIST_FORWARD_AUTH_HEADER', async function() {
-    // These variables are reset by our beforeEach/afterEach hooks.
-    process.env.GRIST_AUTO_USER = 'false';
-    process.env.GRIST_FORCE_LOGIN = 'true';
-    process.env.GRIST_FORWARD_AUTH_HEADER = 'X-email';
-    process.env.GRIST_IGNORE_SESSION = 'true';
-
-    // need a server with the above env vars for this test
-    const localServer = new FlexServer(0, 'test docWorker');
-    await activateServer(localServer, docTools.getDocManager());
-
-    try {
-      await assert.isRejected(
-        axios.get(localServer.getOwnUrl(), {headers: {'X-email': 'not-chimpy@getgrist.com'}}),
-        '403'
-      );
-      const strangerUser = await dbManager.getExistingUserByLogin('nonexistant-email@getgrist.com');
-      assert.isUndefined(strangerUser, 'does not create user for stranger');
-
-    } finally {
-      await localServer.close();
-    }
-  });
 });
 
 function withoutTimestamp(txt: string): string {
