@@ -441,10 +441,10 @@ describe('Authorizer', function() {
 
     try {
       await assert.isRejected(
-        axios.get(localServer.getOwnUrl(), {headers: {'X-email': 'nonexistant-email@getgrist.com'}}),
+        axios.get(localServer.getOwnUrl(), {headers: {'X-email': 'notchimpy@getgrist.com'}}),
         '403'
       );
-      const strangerUser = await dbManager.getExistingUserByLogin('nonexistant-email@getgrist.com');
+      const strangerUser = await dbManager.getExistingUserByLogin('notchimpy@getgrist.com');
       assert.isUndefined(strangerUser, 'does not create user for stranger');
 
     } finally {
